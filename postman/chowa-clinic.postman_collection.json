@@ -1,0 +1,2779 @@
+{
+  "info": {
+    "name": "Chowa Clinic API",
+    "description": "Front desk API for Chowa Physio & Dental Care.\n\n1. Import this collection and the \"Chowa local\" environment, select the environment.\n2. Set `password` in the environment (the admin password from the seed).\n3. Run the folders in order (Runner > Run collection), or send requests one by one.\n\nRun it against a development or test database: it creates a doctor, a patient, invoices and a staff login.\nMoney is in poisha (৳1 = 100). Dates are YYYY-MM-DD clinic days (Asia/Dhaka).\nErrors look like `{ \"error\": { \"code\", \"message\", \"details\" } }`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "departmentId",
+      "value": ""
+    },
+    {
+      "key": "serviceId",
+      "value": ""
+    },
+    {
+      "key": "secondServiceId",
+      "value": ""
+    },
+    {
+      "key": "planId",
+      "value": ""
+    },
+    {
+      "key": "planPrice",
+      "value": ""
+    },
+    {
+      "key": "doctorId",
+      "value": ""
+    },
+    {
+      "key": "newPhone",
+      "value": ""
+    },
+    {
+      "key": "patientId",
+      "value": ""
+    },
+    {
+      "key": "appointmentId",
+      "value": ""
+    },
+    {
+      "key": "invoiceId",
+      "value": ""
+    },
+    {
+      "key": "invoiceDue",
+      "value": ""
+    },
+    {
+      "key": "overAmount",
+      "value": ""
+    },
+    {
+      "key": "prescriptionId",
+      "value": ""
+    },
+    {
+      "key": "imageUrl",
+      "value": ""
+    },
+    {
+      "key": "membershipId",
+      "value": ""
+    },
+    {
+      "key": "renewalId",
+      "value": ""
+    },
+    {
+      "key": "staffId",
+      "value": ""
+    },
+    {
+      "key": "yearStart",
+      "value": ""
+    },
+    {
+      "key": "yearEnd",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Sign in",
+      "description": "Health check and login. Login saves the access token used by every other request (collection auth: Bearer {{accessToken}}).",
+      "item": [
+        {
+          "name": "Health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('database is up', function () { pm.expect(pm.response.json().db).to.eql('ok'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "save('accessToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "description": "Returns `{ user, accessToken }` and sets the httpOnly `chowa_rt` refresh cookie (path `/api/auth`). Access tokens last 15 minutes; 10 failed logins per 15 minutes per IP are allowed.",
+            "auth": {
+              "type": "noauth"
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Who am I",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('signed in', function () { pm.expect(pm.response.json().user.username).to.eql(pm.environment.get('username')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Refresh access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "save('accessToken', pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Uses the `chowa_rt` cookie (Postman keeps it from Login). The refresh token rotates on every call.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Clinic setup",
+      "description": "Reads departments, services and plans, and creates a fresh doctor so the queue starts at serial 1. Admin only for the writes.",
+      "item": [
+        {
+          "name": "Clinic settings",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/clinic-settings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "clinic-settings"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Departments",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "var physio = pm.response.json().find(function (d) { return d.code === 'PHY'; });",
+                  "pm.test('Physiotherapy exists', function () { pm.expect(physio).to.be.ok; });",
+                  "save('departmentId', physio.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/departments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "departments"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Services in department",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "var services = pm.response.json();",
+                  "pm.test('at least two services', function () { pm.expect(services.length).to.be.at.least(2); });",
+                  "save('serviceId', services[0].id);",
+                  "save('secondServiceId', services[1].id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/services?departmentId={{departmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "services"
+              ],
+              "query": [
+                {
+                  "key": "departmentId",
+                  "value": "{{departmentId}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Membership plans",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "var plans = pm.response.json().filter(function (p) { return p.isActive && !p.departmentId; });",
+                  "plans.sort(function (a, b) { return b.discountPercent - a.discountPercent; });",
+                  "pm.test('an all-department plan exists', function () { pm.expect(plans.length).to.be.above(0); });",
+                  "save('planId', plans[0].id);",
+                  "save('planPrice', plans[0].price);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/membership-plans",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "membership-plans"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Create doctor",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);",
+                  "save('doctorId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/practitioners",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "practitioners"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Dr. Postman {{$timestamp}}\",\n  \"title\": \"BPT\",\n  \"departmentId\": \"{{departmentId}}\",\n  \"slotMinutes\": 30\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Set weekly schedule",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/practitioners/{{doctorId}}/schedules",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "practitioners",
+                "{{doctorId}}",
+                "schedules"
+              ]
+            },
+            "description": "Replaces the whole week. `dayOfWeek`: 0 = Sunday ... 6 = Saturday. Overlapping blocks on one day are rejected.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"schedules\": [\n    {\n      \"dayOfWeek\": 0,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"22:00\"\n    },\n    {\n      \"dayOfWeek\": 1,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"22:00\"\n    },\n    {\n      \"dayOfWeek\": 2,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"22:00\"\n    },\n    {\n      \"dayOfWeek\": 3,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"22:00\"\n    },\n    {\n      \"dayOfWeek\": 4,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"22:00\"\n    },\n    {\n      \"dayOfWeek\": 5,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"22:00\"\n    },\n    {\n      \"dayOfWeek\": 6,\n      \"startTime\": \"08:00\",\n      \"endTime\": \"22:00\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Doctors in department",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/practitioners?departmentId={{departmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "practitioners"
+              ],
+              "query": [
+                {
+                  "key": "departmentId",
+                  "value": "{{departmentId}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Walk-in visit & queue",
+      "description": "Register + book in one request, then run the doctor's queue. `Next` always sends the appointment the screen shows in the room; a stale screen gets 409 instead of skipping a patient.",
+      "item": [
+        {
+          "name": "Find patient by phone",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// A random new mobile number for this run",
+                  "pm.collectionVariables.set('newPhone', '017' + String(Math.floor(Math.random() * 1e8)).padStart(8, '0'));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('no patient with this phone yet', function () { pm.expect(pm.response.json().patients).to.have.length(0); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/lookup?phone={{newPhone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "phone",
+                  "value": "{{newPhone}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "New visit (new patient)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);",
+                  "var body = pm.response.json();",
+                  "pm.test('serial 1 for a fresh doctor', function () { pm.expect(body.appointment.serialNo).to.eql(1); });",
+                  "pm.test('patient ID generated', function () { pm.expect(body.patient.patientCode).to.match(/^CPD-\\d{6}$/); });",
+                  "save('patientId', body.patient.id);",
+                  "save('appointmentId', body.appointment.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/visits",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "visits"
+              ]
+            },
+            "description": "Send `patientId` instead of `newPatient` for an existing patient. Returns the patient ID (CPD-000123), the serial number and `warnings` (e.g. doctor not scheduled today).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPatient\": {\n    \"name\": \"Postman Patient {{$timestamp}}\",\n    \"phone\": \"{{newPhone}}\",\n    \"gender\": \"FEMALE\",\n    \"ageYears\": 32\n  },\n  \"departmentId\": \"{{departmentId}}\",\n  \"practitionerId\": \"{{doctorId}}\",\n  \"services\": [\n    {\n      \"serviceId\": \"{{serviceId}}\"\n    },\n    {\n      \"serviceId\": \"{{secondServiceId}}\",\n      \"quantity\": 2\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Serial slip (80 mm PDF)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectPdf();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{appointmentId}}/slip",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointmentId}}",
+                "slip"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Queue board (all doctors)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "var mine = pm.response.json().doctors.find(function (d) { return d.practitioner.id === pm.collectionVariables.get('doctorId'); });",
+                  "pm.test('our doctor has 1 waiting', function () { pm.expect(mine.waitingCount).to.eql(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/queue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "queue"
+              ]
+            },
+            "description": "Poll every few seconds for the \"Now serving\" strip. Filters: `date`, `departmentId`."
+          }
+        },
+        {
+          "name": "One doctor's queue",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('doctor is free', function () { pm.expect(pm.response.json().status).to.eql('FREE'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/queue/{{doctorId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "queue",
+                "{{doctorId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Next: call the first patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('our patient is in the room', function () { pm.expect(pm.response.json().calledId).to.eql(pm.collectionVariables.get('appointmentId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/queue/{{doctorId}}/next",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "queue",
+                "{{doctorId}}",
+                "next"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedCurrentAppointmentId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Next from a stale screen (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(409);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/queue/{{doctorId}}/next",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "queue",
+                "{{doctorId}}",
+                "next"
+              ]
+            },
+            "description": "The screen still thinks the doctor is free, but a patient is in the room: refused so nobody is skipped.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedCurrentAppointmentId\": null\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Add treatment record",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{appointmentId}}/treatments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointmentId}}",
+                "treatments"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Lower back mobilisation\",\n  \"toothOrArea\": \"L4-L5\",\n  \"serviceId\": \"{{secondServiceId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Next: finish without calling anyone",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('visit completed', function () { pm.expect(pm.response.json().completedId).to.eql(pm.collectionVariables.get('appointmentId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/queue/{{doctorId}}/next",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "queue",
+                "{{doctorId}}",
+                "next"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedCurrentAppointmentId\": \"{{appointmentId}}\",\n  \"callNext\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Appointment detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('COMPLETED', function () { pm.expect(pm.response.json().status).to.eql('COMPLETED'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{appointmentId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments",
+                "{{appointmentId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Completed but not billed",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/appointments?unbilled=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "appointments"
+              ],
+              "query": [
+                {
+                  "key": "unbilled",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Billing",
+      "description": "Invoice the visit with a part payment, then collect the rest. Amounts are in poisha (৳1 = 100).",
+      "item": [
+        {
+          "name": "Preview invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('services pre-filled from the visit', function () { pm.expect(pm.response.json().items).to.have.length(2); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/invoices/preview",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices",
+                "preview"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appointmentId\": \"{{appointmentId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Create invoice with part payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);",
+                  "var inv = pm.response.json();",
+                  "pm.test('PARTIAL', function () { pm.expect(inv.status).to.eql('PARTIAL'); });",
+                  "save('invoiceId', inv.id);",
+                  "save('invoiceDue', inv.due);",
+                  "save('overAmount', inv.due + 1);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/invoices",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices"
+              ]
+            },
+            "description": "Leave out `items` to bill the visit's services. Member discount is applied automatically (`applyMemberDiscount: false` to skip).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"appointmentId\": \"{{appointmentId}}\",\n  \"manualDiscount\": 0,\n  \"payment\": {\n    \"amount\": 30000,\n    \"method\": \"CASH\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Overpayment is refused (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(400);",
+                  "pm.test('tells the amount due', function () { pm.expect(pm.response.json().error.details.due).to.eql(pm.collectionVariables.get('invoiceDue')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/invoices/{{invoiceId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices",
+                "{{invoiceId}}",
+                "payments"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": {{overAmount}}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Pay the rest by bKash",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);",
+                  "pm.test('PAID', function () { pm.expect(pm.response.json().status).to.eql('PAID'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/invoices/{{invoiceId}}/payments",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices",
+                "{{invoiceId}}",
+                "payments"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": {{invoiceDue}},\n  \"method\": \"BKASH\",\n  \"reference\": \"8N7A6B5C4D\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Invoice detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/invoices/{{invoiceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices",
+                "{{invoiceId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Invoice PDF (A5)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectPdf();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/invoices/{{invoiceId}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices",
+                "{{invoiceId}}",
+                "pdf"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Invoice PDF (A4, download)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectPdf();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/invoices/{{invoiceId}}/pdf?paper=a4&download=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices",
+                "{{invoiceId}}",
+                "pdf"
+              ],
+              "query": [
+                {
+                  "key": "paper",
+                  "value": "a4"
+                },
+                {
+                  "key": "download",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Due invoices",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('totals row', function () { pm.expect(pm.response.json().totals).to.have.property('due'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/invoices?status=DUE,PARTIAL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices"
+              ],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "DUE,PARTIAL"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Prescription",
+      "description": "Upload a photo of the paper prescription. In the Postman app, choose any image for the \"images\" field if the sample file is not found.",
+      "item": [
+        {
+          "name": "Upload prescription photo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);",
+                  "var rx = pm.response.json();",
+                  "pm.test('Rx number', function () { pm.expect(rx.rxNo).to.match(/^RX-\\d{4}-\\d{6}$/); });",
+                  "save('prescriptionId', rx.id);",
+                  "save('imageUrl', rx.images[0].url);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/prescriptions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prescriptions"
+              ]
+            },
+            "description": "multipart/form-data: up to 10 images (15 MB each) in `images`, plus `appointmentId`, `diagnosis?`, `advice?`, `nextVisitDate?` (YYYY-MM-DD).",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "appointmentId",
+                  "value": "{{appointmentId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "diagnosis",
+                  "value": "Lumbar strain",
+                  "type": "text"
+                },
+                {
+                  "key": "images",
+                  "type": "file",
+                  "src": "sample-prescription.jpg"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Prescription detail",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/prescriptions/{{prescriptionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prescriptions",
+                "{{prescriptionId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Open image (signed link, no login)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('JPEG', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('image/jpeg'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{imageUrl}}",
+            "description": "Image links expire after FILE_URL_TTL_SECONDS.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
+          "name": "Prescription PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectPdf();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/prescriptions/{{prescriptionId}}/pdf",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "prescriptions",
+                "{{prescriptionId}}",
+                "pdf"
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Memberships",
+      "description": "Sell a plan (creates its invoice), print the card, renew.",
+      "item": [
+        {
+          "name": "Issue membership",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);",
+                  "var m = pm.response.json();",
+                  "pm.test('card number', function () { pm.expect(m.cardNo).to.match(/^CPD-M-\\d{5}$/); });",
+                  "save('membershipId', m.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/memberships",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"planId\": \"{{planId}}\",\n  \"payment\": { \"amount\": {{planPrice}}, \"method\": \"CASH\" }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Discount lookup for billing",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('best discount found', function () { pm.expect(pm.response.json().best).to.be.ok; });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/memberships/lookup?patientId={{patientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships",
+                "lookup"
+              ],
+              "query": [
+                {
+                  "key": "patientId",
+                  "value": "{{patientId}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Membership card PDF",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectPdf();"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/memberships/{{membershipId}}/card",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships",
+                "{{membershipId}}",
+                "card"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Renew",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);",
+                  "pm.test('starts after the current one', function () { pm.expect(pm.response.json().displayStatus).to.eql('UPCOMING'); });",
+                  "save('renewalId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/memberships/{{membershipId}}/renew",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships",
+                "{{membershipId}}",
+                "renew"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Expiring in 30 days",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/memberships?tab=expiring",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships"
+              ],
+              "query": [
+                {
+                  "key": "tab",
+                  "value": "expiring"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Patients",
+      "description": "Search, profile, history timeline, notes.",
+      "item": [
+        {
+          "name": "Global search",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('finds our patient', function () { pm.expect(pm.response.json().patients[0].id).to.eql(pm.collectionVariables.get('patientId')); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/search?q={{newPhone}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "search"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "{{newPhone}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Patient list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients?q=Postman&page=1&pageSize=20",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "Postman"
+                },
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "20"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Patient profile",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{patientId}}"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Patient history",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "var types = pm.response.json().events.map(function (e) { return e.type; });",
+                  "pm.test('visit, invoice and prescription in the timeline', function () {",
+                  "  pm.expect(types).to.include.members(['visit', 'invoice', 'prescription']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/history",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{patientId}}",
+                "history"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Add note",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{patientId}}",
+                "notes"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"Prefers evening appointments.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Update patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients",
+                "{{patientId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"address\": \"Mirpur 10, Dhaka\",\n  \"bloodGroup\": \"B+\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Register patient only",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/patients",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "patients"
+              ]
+            },
+            "description": "Families share phones, so an existing phone is allowed. Call `GET /patients/lookup?phone=` first to show the duplicate-phone warning.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Walk-in {{$timestamp}}\",\n  \"phone\": \"{{newPhone}}\",\n  \"gender\": \"MALE\",\n  \"ageYears\": 45\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Dashboard & reports",
+      "description": "Dashboard for everyone (money hidden from practitioners); reports and audit log for Admin.",
+      "item": [
+        {
+          "name": "Dashboard",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('money section for Admin / Front Desk', function () { pm.expect(pm.response.json().money).to.have.property('collectedToday'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/dashboard",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "dashboard"
+              ]
+            },
+            "description": "Today's counts, queue, visits, collection, dues, unbilled visits and expiring memberships. Refresh every 30-60 s; poll /queue for the live strip."
+          }
+        },
+        {
+          "name": "Report: this month",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "var r = pm.response.json();",
+                  "pm.test('departments add up to the summary', function () {",
+                  "  var billed = r.revenueByDepartment.reduce(function (s, d) { return s + d.billed; }, 0);",
+                  "  pm.expect(billed).to.eql(r.summary.billed);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ]
+            },
+            "description": "Default range: the 1st of this month to today. `from`, `to` (YYYY-MM-DD, clinic days), `groupBy=day|month`."
+          }
+        },
+        {
+          "name": "Report: whole year by month",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "var year = new Date().getFullYear();",
+                  "pm.collectionVariables.set('yearStart', year + '-01-01');",
+                  "pm.collectionVariables.set('yearEnd', year + '-12-31');"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('12 monthly buckets', function () { pm.expect(pm.response.json().series).to.have.length(12); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reports?from={{yearStart}}&to={{yearEnd}}&groupBy=month",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "{{yearStart}}"
+                },
+                {
+                  "key": "to",
+                  "value": "{{yearEnd}}"
+                },
+                {
+                  "key": "groupBy",
+                  "value": "month"
+                }
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Audit log for the invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('payments were recorded', function () { pm.expect(pm.response.json().total).to.be.at.least(1); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-log?entityType=invoices&entityId={{invoiceId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-log"
+              ],
+              "query": [
+                {
+                  "key": "entityType",
+                  "value": "invoices"
+                },
+                {
+                  "key": "entityId",
+                  "value": "{{invoiceId}}"
+                }
+              ]
+            },
+            "description": ""
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. Admin",
+      "description": "Staff logins and corrections that only an Admin may make.",
+      "item": [
+        {
+          "name": "Staff list",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ]
+            },
+            "description": ""
+          }
+        },
+        {
+          "name": "Create front desk login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(201);",
+                  "save('staffId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/staff",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Desk\",\n  \"username\": \"desk{{$timestamp}}\",\n  \"password\": \"Desk-pass-123\",\n  \"role\": \"FRONT_DESK\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Reset password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(204);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}/reset-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}",
+                "reset-password"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newPassword\": \"Desk-pass-456\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Deactivate login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/staff/{{staffId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "staff",
+                "{{staffId}}"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Void invoice",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);",
+                  "pm.test('VOID', function () { pm.expect(pm.response.json().status).to.eql('VOID'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/invoices/{{invoiceId}}/void",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "invoices",
+                "{{invoiceId}}",
+                "void"
+              ]
+            },
+            "description": "Records a refund of everything paid as a negative payment. Invoices are never deleted.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Demo: billed by mistake\",\n  \"refundMethod\": \"CASH\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Cancel the renewal",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(200);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/memberships/{{renewalId}}/cancel",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "memberships",
+                "{{renewalId}}",
+                "cancel"
+              ]
+            },
+            "description": "",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Demo cancellation\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Sign out",
+      "description": "",
+      "item": [
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "function expectStatus(code) {",
+                  "  pm.test('HTTP ' + code, function () { pm.response.to.have.status(code); });",
+                  "}",
+                  "function expectPdf() {",
+                  "  expectStatus(200);",
+                  "  pm.test('is a PDF', function () { pm.expect(pm.response.headers.get('Content-Type')).to.eql('application/pdf'); });",
+                  "}",
+                  "function save(name, value) { pm.collectionVariables.set(name, value); }",
+                  "expectStatus(204);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

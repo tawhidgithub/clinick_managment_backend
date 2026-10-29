@@ -1,0 +1,462 @@
+// Chowa Clinic - database schema
+// Money is always stored in poisha (Int). 1 taka = 100 poisha.
+// All DateTime values are stored in UTC; "visitDate" is the clinic-local
+// (Asia/Dhaka) calendar day.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  FRONT_DESK
+  PRACTITIONER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum AppointmentStatus {
+  BOOKED // advance booking, not yet arrived (no serial yet)
+  WAITING // arrived, has a serial, waiting in the doctor's queue
+  IN_ROOM
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum InvoiceStatus {
+  DUE
+  PARTIAL
+  PAID
+  VOID
+}
+
+enum PaymentMethod {
+  CASH
+  BKASH
+  NAGAD
+  CARD
+  BANK
+}
+
+enum MembershipStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+// ─── Settings ───────────────────────────────────────────────────────────────
+
+// Single row (id = 1): printed on invoices, slips and membership cards.
+model ClinicSettings {
+  id            Int      @id @default(1)
+  name          String
+  nameBn        String?
+  address       String?
+  phone         String?
+  email         String?
+  logoKey       String?
+  invoiceFooter String?
+  updatedAt     DateTime @updatedAt
+}
+
+// ─── Staff & auth ───────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  username     String   @unique
+  passwordHash String
+  role         Role
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  practitioner         Practitioner?
+  sessions             Session[]
+  notes                Note[]
+  payments             Payment[]
+  appointmentsCreated  Appointment[]       @relation("AppointmentCreatedBy")
+  invoicesCreated      Invoice[]           @relation("InvoiceCreatedBy")
+  invoicesVoided       Invoice[]           @relation("InvoiceVoidedBy")
+  prescriptionsCreated Prescription[]      @relation("PrescriptionCreatedBy")
+  imagesUploaded       PrescriptionImage[]
+  membershipsCreated   Membership[]        @relation("MembershipCreatedBy")
+  auditLogs            AuditLog[]
+}
+
+// One row per signed-in device. The refresh token itself is never stored,
+// only its SHA-256 hash. Rotated on every refresh.
+model Session {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  String    @unique
+  userAgent  String?
+  ip         String?
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// ─── Clinic structure ───────────────────────────────────────────────────────
+
+model Department {
+  id       String  @id @default(cuid())
+  name     String  @unique // Physiotherapy, Dental, Diet
+  code     String  @unique // PHY, DEN, DIE
+  color    String // hex, e.g. #2563EB
+  isActive Boolean @default(true)
+
+  practitioners   Practitioner[]
+  services        Service[]
+  appointments    Appointment[]
+  membershipPlans MembershipPlan[]
+}
+
+model Practitioner {
+  id           String     @id @default(cuid())
+  name         String
+  title        String? // e.g. BDS, BPT, Dietitian
+  phone        String?
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  userId       String?    @unique
+  user         User?      @relation(fields: [userId], references: [id])
+  slotMinutes  Int        @default(30)
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  schedules     PractitionerSchedule[]
+  appointments  Appointment[]
+  prescriptions Prescription[]
+
+  @@index([departmentId])
+}
+
+model PractitionerSchedule {
+  id             String       @id @default(cuid())
+  practitionerId String
+  practitioner   Practitioner @relation(fields: [practitionerId], references: [id], onDelete: Cascade)
+  dayOfWeek      Int // 0 = Sunday ... 6 = Saturday
+  startTime      String // "10:00" (clinic local time)
+  endTime        String // "18:00"
+
+  @@index([practitionerId, dayOfWeek])
+}
+
+model Service {
+  id           String     @id @default(cuid())
+  name         String
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id])
+  price        Int // poisha
+  isActive     Boolean    @default(true)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  treatments          TreatmentRecord[]
+  invoiceItems        InvoiceItem[]
+  appointmentServices AppointmentService[]
+
+  @@unique([departmentId, name])
+}
+
+// ─── Patients ───────────────────────────────────────────────────────────────
+
+model Patient {
+  id          String    @id @default(cuid())
+  patientCode String    @unique // CPD-000123
+  name        String
+  phone       String // not unique: families share phones
+  altPhone    String?
+  gender      Gender?
+  dateOfBirth DateTime? @db.Date
+  ageYears    Int? // used when date of birth is unknown
+  address     String?
+  bloodGroup  String?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime? // soft delete
+
+  appointments  Appointment[]
+  invoices      Invoice[]
+  prescriptions Prescription[]
+  memberships   Membership[]
+  patientNotes  Note[]
+
+  @@index([phone])
+  @@index([name])
+  @@index([deletedAt])
+}
+
+model Note {
+  id        String   @id @default(cuid())
+  patientId String
+  patient   Patient  @relation(fields: [patientId], references: [id])
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  body      String
+  createdAt DateTime @default(now())
+
+  @@index([patientId, createdAt])
+}
+
+// ─── Visits & queue ─────────────────────────────────────────────────────────
+
+model Appointment {
+  id             String            @id @default(cuid())
+  patientId      String
+  patient        Patient           @relation(fields: [patientId], references: [id])
+  departmentId   String
+  department     Department        @relation(fields: [departmentId], references: [id])
+  practitionerId String
+  practitioner   Practitioner      @relation(fields: [practitionerId], references: [id])
+  status         AppointmentStatus @default(WAITING)
+  visitDate      DateTime          @db.Date // clinic-local day of the visit
+
+  // Walk-ins have no time slot. Advance bookings (later phase) set these.
+  startAt DateTime?
+  endAt   DateTime?
+
+  // Printed on the slip; never changes once assigned. Null until check-in.
+  serialNo      Int?
+  // Order in the doctor's queue. Starts equal to serialNo; "move to end"
+  // gives it a new, larger value without touching the printed serial.
+  queuePosition Int?
+
+  calledAt     DateTime? // moved IN_ROOM
+  completedAt  DateTime?
+  reason       String?
+  cancelReason String?
+  createdById  String
+  createdBy    User      @relation("AppointmentCreatedBy", fields: [createdById], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  services     AppointmentService[]
+  treatments   TreatmentRecord[]
+  invoices     Invoice[] // at most one non-VOID invoice (enforced in billing service)
+  prescription Prescription?
+
+  @@unique([practitionerId, visitDate, serialNo])
+  @@index([practitionerId, visitDate, status, queuePosition])
+  @@index([visitDate, status])
+  @@index([patientId])
+}
+
+// Services chosen for a visit at booking, with the price at that moment.
+model AppointmentService {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  serviceId     String
+  service       Service     @relation(fields: [serviceId], references: [id])
+  price         Int // poisha, snapshot at booking time
+  quantity      Int         @default(1)
+
+  @@unique([appointmentId, serviceId])
+}
+
+// What was actually done at a visit (optional; practitioners may skip it).
+model TreatmentRecord {
+  id            String      @id @default(cuid())
+  appointmentId String
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  serviceId     String?
+  service       Service?    @relation(fields: [serviceId], references: [id])
+  description   String
+  toothOrArea   String? // tooth number or body area
+  createdAt     DateTime    @default(now())
+}
+
+// ─── Billing ────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id                 String        @id @default(cuid())
+  invoiceNo          String        @unique // INV-2026-000123
+  patientId          String
+  patient            Patient       @relation(fields: [patientId], references: [id])
+  // Not @unique: a VOID invoice and its replacement both point at the visit.
+  appointmentId      String?
+  appointment        Appointment?  @relation(fields: [appointmentId], references: [id])
+  membershipId       String?
+  membership         Membership?   @relation(fields: [membershipId], references: [id])
+  subtotal           Int           @default(0) // poisha
+  memberDiscount     Int           @default(0)
+  // Which membership gave the discount, frozen at billing time, e.g. "Gold 20% · CPD-M-00012"
+  memberDiscountNote String?
+  manualDiscount     Int           @default(0)
+  total              Int           @default(0)
+  paidAmount         Int           @default(0)
+  status             InvoiceStatus @default(DUE)
+  voidReason         String?
+  voidedAt           DateTime?
+  voidedById         String?
+  voidedBy           User?         @relation("InvoiceVoidedBy", fields: [voidedById], references: [id])
+  createdById        String
+  createdBy          User          @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  items    InvoiceItem[]
+  payments Payment[]
+
+  @@index([status])
+  @@index([createdAt])
+  @@index([patientId])
+  @@index([appointmentId])
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  serviceId   String?
+  service     Service? @relation(fields: [serviceId], references: [id])
+  description String
+  quantity    Int      @default(1)
+  unitPrice   Int // poisha
+  lineTotal   Int // poisha
+}
+
+model Payment {
+  id           String        @id @default(cuid())
+  invoiceId    String
+  invoice      Invoice       @relation(fields: [invoiceId], references: [id])
+  amount       Int // poisha; negative = refund when an invoice is voided
+  method       PaymentMethod @default(CASH)
+  reference    String? // bKash TrxID etc.
+  note         String? // e.g. refund reason
+  receivedById String
+  receivedBy   User          @relation(fields: [receivedById], references: [id])
+  paidAt       DateTime      @default(now())
+
+  @@index([invoiceId])
+  @@index([paidAt])
+}
+
+// ─── Prescriptions ──────────────────────────────────────────────────────────
+
+model Prescription {
+  id             String       @id @default(cuid())
+  rxNo           String       @unique
+  patientId      String
+  patient        Patient      @relation(fields: [patientId], references: [id])
+  appointmentId  String?      @unique
+  appointment    Appointment? @relation(fields: [appointmentId], references: [id])
+  practitionerId String
+  practitioner   Practitioner @relation(fields: [practitionerId], references: [id])
+  diagnosis      String?
+  advice         String?
+  nextVisitDate  DateTime?    @db.Date
+  createdById    String
+  createdBy      User         @relation("PrescriptionCreatedBy", fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now())
+
+  images PrescriptionImage[]
+
+  @@index([patientId])
+}
+
+model PrescriptionImage {
+  id             String       @id @default(cuid())
+  prescriptionId String
+  prescription   Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+  // Storage key only (R2 object key or local path). URLs are signed on read.
+  fileKey        String
+  mimeType       String
+  sizeBytes      Int
+  pageNo         Int          @default(1)
+  uploadedById   String
+  uploadedBy     User         @relation(fields: [uploadedById], references: [id])
+  uploadedAt     DateTime     @default(now())
+}
+
+// ─── Memberships ────────────────────────────────────────────────────────────
+
+model MembershipPlan {
+  id              String      @id @default(cuid())
+  name            String      @unique // Silver, Gold
+  price           Int // poisha
+  durationMonths  Int
+  discountPercent Int // 0-100
+  departmentId    String? // null = all departments
+  department      Department? @relation(fields: [departmentId], references: [id])
+  benefits        String?
+  isActive        Boolean     @default(true)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  memberships Membership[]
+}
+
+model Membership {
+  id            String           @id @default(cuid())
+  cardNo        String           @unique // CPD-M-00045
+  patientId     String
+  patient       Patient          @relation(fields: [patientId], references: [id])
+  planId        String
+  plan          MembershipPlan   @relation(fields: [planId], references: [id])
+  startDate     DateTime         @db.Date
+  endDate       DateTime         @db.Date
+  status        MembershipStatus @default(ACTIVE)
+  cancelReason  String?
+  cancelledAt   DateTime?
+  // Set when this membership is a renewal of an earlier one
+  renewedFromId String?          @unique
+  renewedFrom   Membership?      @relation("MembershipRenewal", fields: [renewedFromId], references: [id])
+  renewedBy     Membership?      @relation("MembershipRenewal")
+  createdById   String
+  createdBy     User             @relation("MembershipCreatedBy", fields: [createdById], references: [id])
+  createdAt     DateTime         @default(now())
+
+  invoices Invoice[]
+
+  @@index([patientId, status])
+  @@index([endDate])
+}
+
+// ─── Numbering ──────────────────────────────────────────────────────────────
+
+// Atomic sequences. Keys: "patient", "invoice:2026", "rx", "card",
+// "serial:<practitionerId>:<YYYY-MM-DD>".
+model Counter {
+  key   String @id
+  value Int    @default(0)
+}
+
+// ─── Audit ──────────────────────────────────────────────────────────────────
+
+// One row per successful change made through the API (create, update, void,
+// cancel, delete, payment...), written by the audit module. Never edited.
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String // "POST /invoices/:id/void"
+  entityType String // "invoices"
+  entityId   String? // the record the request was about, when known
+  actorId    String?
+  actor      User?    @relation(fields: [actorId], references: [id])
+  status     Int // HTTP status of the response
+  data       Json? // request body with secrets removed
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+  @@index([createdAt])
+}
